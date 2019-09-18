@@ -4,9 +4,9 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{2EA4C00C-1E97-401C-8208-256D9CF993B2}</ProjectGuid>
+    <ProjectGuid>{C1FF48D9-5EA9-4D4F-B33A-E30593910B7D}</ProjectGuid>
     <OutputType>Library</OutputType>
-    <RootNamespace>NoZ.Platform.Windows</RootNamespace>
+    <RootNamespace>NoZ.Import</RootNamespace>
     <AssemblyName>noz-windows</AssemblyName>
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
@@ -51,10 +51,17 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\blockbrain\libs\noz\noz.csproj">
+    <ProjectReference Include="..\noz\noz.csproj">
       <Project>{8e590f57-0fc4-46be-a0d1-1ea5d7c18754}</Project>
       <Name>noz</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="ImageAtlasBuilder.cs" />
+    <Compile Include="ImageImporter.cs" />
+    <Compile Include="Importer.cs" />
+    <Compile Include="ImportException.cs" />
+    <Compile Include="WavImporter.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
