@@ -1,5 +1,5 @@
 ﻿/*
-  NoZ Game Engine
+  NozEngine Library
 
   Copyright(c) 2019 NoZ Games, LLC
 
@@ -26,8 +26,13 @@ using System;
 
 namespace NoZ.Import
 {
-    public class ImportException : Exception
+    class ImportTypeAttribute : Attribute
     {
-        public ImportException(string message) : base(message) { }
+        public string TypeName;
+
+        public ImportTypeAttribute(string typeName)
+        {
+            TypeName = typeName;
+        }
     }
 }

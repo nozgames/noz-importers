@@ -5,7 +5,8 @@ using System.Runtime.InteropServices;
 
 namespace NoZ.Import
 {
-    internal class WavImporter : Importer
+    [ImportTypeAttribute(".wav")]
+    internal class WavImporter : ResourceImporter
     {
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
         struct WavHeader
@@ -98,6 +99,19 @@ namespace NoZ.Import
 
             reader.BaseStream.Position = dataPosition;
             writer.Write(reader.ReadBytes((int)dataSize));
+
+#if false
+            // Create the clip
+            var clip = AudioClip.Create(sampleCount, format.channels == 1 ? AudioChannelFormat.Mono : AudioChannelFormat.Stereo, (int)format.samplesPerSec);
+
+            // Read the data
+            reader.BaseStream.Position = dataPosition;
+            byte[] data = reader.ReadBytes((int)dataSize);
+
+            short[] pcm = new short[(int)dataSize / 2];
+            Buffer.BlockCopy(data, 0, pcm, 0, (int)dataSize);
+            clip.SetData(pcm, 0);
+#endif
         }
 
         public override void Import(Stream source, Stream target, FieldInfo info)
