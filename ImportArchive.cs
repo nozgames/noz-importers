@@ -1,5 +1,5 @@
 ﻿/*
-  NozEngine Library
+  NoZ Game Engine
 
   Copyright(c) 2019 NoZ Games, LLC
 
@@ -66,13 +66,21 @@ namespace NoZ.Import
 
             Directory.CreateDirectory(Path.GetDirectoryName(targetPath));
 
-            using (var readStream = File.OpenRead(sourcePath))
-            using (var writeStream = File.OpenWrite(targetPath))
+            try
             {
-                using (var writer = new BinaryWriter(writeStream, System.Text.Encoding.Default, true))
-                    writer.Write(info.FieldType.FullName);
+                using (var readStream = File.OpenRead(sourcePath))
+                using (var writeStream = File.OpenWrite(targetPath))
+                {
+                    using (var writer = new BinaryWriter(writeStream, System.Text.Encoding.Default, true))
+                        writer.Write(info.FieldType.FullName);
 
-                importer.Import(readStream, writeStream, info);
+                    importer.Import(readStream, writeStream, info);
+                }
+            }
+            catch(Exception e)
+            {
+                File.Delete(targetPath);
+                throw e;
             }
         }
 

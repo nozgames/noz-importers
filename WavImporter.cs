@@ -1,11 +1,35 @@
-﻿using System;
+﻿/*
+  NoZ Game Engine
+
+  Copyright(c) 2019 NoZ Games, LLC
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files(the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions :
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+*/
+
+using System;
 using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
 namespace NoZ.Import
 {
-    [ImportTypeAttribute(".wav")]
+    [ImportType("AudioClip")]
     internal class WavImporter : ResourceImporter
     {
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -48,13 +72,14 @@ namespace NoZ.Import
             // Read header blocks..
             while (reader.BaseStream.Position != reader.BaseStream.Length)
             {
-                uint blockId = reader.ReadUInt32();
+                var blockId = reader.ReadUInt32();
 
                 // Read the size of the block
-                uint blockSize = reader.ReadUInt32();
+                var blockSize = reader.ReadUInt32();
+                blockSize += ((blockSize & 1) != 0 ? 1U : 0U);
 
                 // Next block position
-                long next = reader.BaseStream.Position + blockSize;
+                var next = reader.BaseStream.Position + blockSize;
 
                 switch (blockId)
                 {
@@ -81,6 +106,7 @@ namespace NoZ.Import
 
                 // Skip to next block
                 reader.BaseStream.Position = next;
+                Console.WriteLine($"{(char)(blockId&0xFF)}{(char)(blockId >> 8 & 0xFF)}{(char)(blockId >> 16 & 0xFF)}{(char)(blockId >> 24 & 0xFF)} / {blockSize} / {next} / {reader.BaseStream.Length}");
             }
 
             if (dataSize == 0 || dataPosition == 0)
@@ -93,14 +119,15 @@ namespace NoZ.Import
             var bytesPerSample = format.channels * (format.bitsPerSample >> 3);
             var sampleCount = (int)(dataSize / bytesPerSample);
 
+/*
             writer.Write((byte)(format.channels == 1 ? AudioChannelFormat.Mono : AudioChannelFormat.Stereo));
             writer.Write((int)format.samplesPerSec);
             writer.Write(sampleCount);
 
             reader.BaseStream.Position = dataPosition;
             writer.Write(reader.ReadBytes((int)dataSize));
+*/
 
-#if false
             // Create the clip
             var clip = AudioClip.Create(sampleCount, format.channels == 1 ? AudioChannelFormat.Mono : AudioChannelFormat.Stereo, (int)format.samplesPerSec);
 
@@ -111,7 +138,8 @@ namespace NoZ.Import
             short[] pcm = new short[(int)dataSize / 2];
             Buffer.BlockCopy(data, 0, pcm, 0, (int)dataSize);
             clip.SetData(pcm, 0);
-#endif
+
+            clip.Save(writer);
         }
 
         public override void Import(Stream source, Stream target, FieldInfo info)
@@ -128,7 +156,7 @@ namespace NoZ.Import
             {
                 throw;
             }
-            catch
+            catch (Exception e)
             {
                 throw new ImportException("failed to open file for read");
             }
