@@ -106,7 +106,6 @@ namespace NoZ.Import
 
                 // Skip to next block
                 reader.BaseStream.Position = next;
-                Console.WriteLine($"{(char)(blockId&0xFF)}{(char)(blockId >> 8 & 0xFF)}{(char)(blockId >> 16 & 0xFF)}{(char)(blockId >> 24 & 0xFF)} / {blockSize} / {next} / {reader.BaseStream.Length}");
             }
 
             if (dataSize == 0 || dataPosition == 0)
@@ -118,16 +117,7 @@ namespace NoZ.Import
 
             var bytesPerSample = format.channels * (format.bitsPerSample >> 3);
             var sampleCount = (int)(dataSize / bytesPerSample);
-
-/*
-            writer.Write((byte)(format.channels == 1 ? AudioChannelFormat.Mono : AudioChannelFormat.Stereo));
-            writer.Write((int)format.samplesPerSec);
-            writer.Write(sampleCount);
-
-            reader.BaseStream.Position = dataPosition;
-            writer.Write(reader.ReadBytes((int)dataSize));
-*/
-
+            
             // Create the clip
             var clip = AudioClip.Create(sampleCount, format.channels == 1 ? AudioChannelFormat.Mono : AudioChannelFormat.Stereo, (int)format.samplesPerSec);
 
