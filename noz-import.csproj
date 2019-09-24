@@ -57,12 +57,21 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="FontImporter.cs" />
     <Compile Include="ImageImporter.cs" />
     <Compile Include="ImportArchive.cs" />
     <Compile Include="ImportExtensionAttribute.cs" />
+    <Compile Include="MSDF\MSDF.Contour.cs" />
+    <Compile Include="MSDF\MSDF.cs" />
+    <Compile Include="MSDF\MSDF.Edge.cs" />
+    <Compile Include="MSDF\MSDF.Math.cs" />
+    <Compile Include="MSDF\MSDF.Shape.cs" />
+    <Compile Include="MSDF\MSDF.SignedDistance.cs" />
     <Compile Include="ResourceImporter.cs" />
     <Compile Include="ImportException.cs" />
     <Compile Include="ImportTypeAttribute.cs" />
+    <Compile Include="TTF\TrueTypeFont.cs" />
+    <Compile Include="TTF\TrueTypeFont.Reader.cs" />
     <Compile Include="WavImporter.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
