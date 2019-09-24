@@ -146,7 +146,7 @@ namespace NoZ.Import
             {
                 throw;
             }
-            catch (Exception e)
+            catch
             {
                 throw new ImportException("failed to open file for read");
             }
