@@ -24,8 +24,13 @@
 
 using System.IO;
 using System.Reflection;
+using System.Runtime.InteropServices;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Advanced;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 
-using NoZ.Graphics;
+using NoZ;
 
 namespace NoZ.Import
 {
@@ -36,15 +41,45 @@ namespace NoZ.Import
         {
             try
             {
-                var image = LoadImage(source);
+                var image = Image.Load(source);
+                var format = PixelFormat.A8;
+                byte[] bytes;
 
-                // Optional border
-                var border = info.GetCustomAttribute<ImageBorderAttribute>();
-                if(border != null)
-                    image.Border = new Thickness(border.left, border.top, border.right, border.bottom);
+                switch (image.PixelType.BitsPerPixel)
+                {
+                    case 32:
+                    {
+                        bytes = MemoryMarshal.AsBytes((image as Image<Rgba32>).GetPixelSpan()).ToArray();
+                        format = PixelFormat.R8G8B8A8;
+                        break;
+                    }
 
-                using (var writer = new BinaryWriter(target))
-                    image.Save(writer);    
+                    case 8:
+                    {
+                        bytes = MemoryMarshal.AsBytes((image as Image<Alpha8>).GetPixelSpan()).ToArray();
+                        format = PixelFormat.A8;
+                        break;
+                    }
+
+                    case 24:
+                    {
+                        bytes = MemoryMarshal.AsBytes((image as Image<Rgb24>).GetPixelSpan()).ToArray();
+                        format = PixelFormat.R8G8B8;
+                        break;
+                    }
+
+                    default:
+                        throw new ImportException("unsupported image format");
+                }
+
+                using(var writer = new BinaryWriter(target))
+                {
+                    writer.Write((short)image.Width);
+                    writer.Write((short)image.Height);
+                    writer.Write((byte)format);
+                    writer.Write(new Thickness(0));
+                    writer.Write(bytes, 0, bytes.Length);
+                }
             }
             catch (ImportException)
             {
@@ -56,43 +91,9 @@ namespace NoZ.Import
             }
         }
 
-        private Image LoadImage (Stream stream)
+#if false
+        private NoZ.Graphics.Image LoadImage (Stream stream)
         {
-            var source = new System.Drawing.Bitmap(stream);
-
-            var format = PixelFormat.A8;
-            switch (source.PixelFormat)
-            {
-                case System.Drawing.Imaging.PixelFormat.Format32bppArgb:
-                {
-                    format = PixelFormat.R8G8B8A8;
-                    break;
-                }
-
-                case System.Drawing.Imaging.PixelFormat.Alpha:
-                {
-                    format = PixelFormat.A8;
-                    break;
-                }
-
-                case System.Drawing.Imaging.PixelFormat.Format24bppRgb:
-                {
-                    format = PixelFormat.R8G8B8;
-                    break;
-                }
-            }
-
-            var target = Image.Create(null, source.Width, source.Height, format);
-            var targetLocked = target.Lock();
-            var targetPixels = targetLocked.Raw;
-
-            var data = source.LockBits(
-                new System.Drawing.Rectangle(0, 0, source.Width, source.Height),
-                System.Drawing.Imaging.ImageLockMode.ReadOnly,
-                source.PixelFormat);
-
-            // Copy the data into the byte array
-            System.Runtime.InteropServices.Marshal.Copy(data.Scan0, targetPixels, 0, targetPixels.Length);
 
             switch (format)
             {
@@ -117,9 +118,9 @@ namespace NoZ.Import
                     }
                     break;
                 }
-
             }
             return target;
-        }
+    }
+#endif
     }
 }
