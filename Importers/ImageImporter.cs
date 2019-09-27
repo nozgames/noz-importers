@@ -34,10 +34,19 @@ using NoZ;
 
 namespace NoZ.Import
 {
-    [ImportType("Image")]
+    [ImportType("NoZ.Graphics.Image, NoZ")]
+    [ImportExtension(".png")]
+    [ImportExtension(".jpg")]
+    [ImportExtension(".tga")]
     internal class ImageImporter : ResourceImporter
     {
-        public override void Import(Stream source, Stream target, FieldInfo info)
+        public override void Import(string filename, Stream target)
+        {
+            using (var source = File.OpenRead(filename))
+                Import(source, target);
+        }
+
+        private void Import(Stream source, Stream target)
         {
             try
             {

@@ -29,7 +29,8 @@ using System.Runtime.InteropServices;
 
 namespace NoZ.Import
 {
-    [ImportType("AudioClip")]
+    [ImportType("NoZ.AudioClip, NoZ")]
+    [ImportExtension(".wav")]
     internal class WavImporter : ResourceImporter
     {
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -132,11 +133,12 @@ namespace NoZ.Import
             clip.Save(writer);
         }
 
-        public override void Import(Stream source, Stream target, FieldInfo info)
+        public override void Import(string filename, Stream target)
         {
             try
             {
-                using (var reader = new BinaryReader(source))
+                using (var file = File.OpenRead(filename))
+                using (var reader = new BinaryReader(file))
                 using (var writer = new BinaryWriter(target))
                 {
                     Import(reader, writer);

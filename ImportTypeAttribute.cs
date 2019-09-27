@@ -26,6 +26,7 @@ using System;
 
 namespace NoZ.Import
 {
+    [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
     class ImportTypeAttribute : Attribute
     {
         public string TypeName;

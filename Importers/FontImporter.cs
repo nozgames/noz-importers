@@ -24,14 +24,14 @@
 
 using System;
 using System.IO;
-using System.Reflection;
 using System.Collections.Generic;
 
 using NoZ.Graphics;
 
 namespace NoZ.Import
 {
-    [ImportType("Font")]
+    [ImportType("NoZ.Graphics.Font, NoZ")]
+    [ImportExtension(".ttf")]
     class FontImporter : ResourceImporter
     {
         private class ImportedGlyph
@@ -45,12 +45,17 @@ namespace NoZ.Import
             public char ascii;
         }
 
-        private class FontMeta
+        public class YamlDefinition
         {
-            public string Chars { get; set; } = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.+- ";
-            public int Resolution { get; set; } = 64;
-            public int Range { get; set; } = 8;
-            public int Padding { get; set; } = 2;
+            public class FontDefinition
+            {
+                public string Chars { get; set; } = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.+- ";
+                public int Resolution { get; set; } = 64;
+                public int Range { get; set; } = 8;
+                public int Padding { get; set; } = 2;
+            }
+
+            public FontDefinition Font{ get; set; }
         }
 
         public object StringBuidler { get; private set; }
@@ -58,31 +63,36 @@ namespace NoZ.Import
         private Vector2Int RoundToNearest(in Vector2 v) => new Vector2Int((int)(v.x + 0.5f), (int)(v.y + 0.5f));
         private Vector2Int RoundToNearest(in Vector2Double v) => new Vector2Int((int)(v.x + 0.5f), (int)(v.y + 0.5f));
 
-        public override void Import(Stream source, Stream target, FieldInfo info)
-//        public override object Import(ImportFile file)
+        public override void Import(string filename, Stream target)
         {
-            FontMeta meta = null;
-#if false
-            if (file.MetaInfo != null)
+            YamlDefinition.FontDefinition meta = null;
+
+            var yamlPath = Path.ChangeExtension(filename, ".yaml");
+            try
             {
-                try
-                {
-                    meta = XmlDeserializer.Deserialize(file.MetaInfo.FullName) as FontMeta;
-                    if (null == meta)
-                        throw new ResourceImportException("Meta file is not a valid FontMeta resource.");
-
+                if (File.Exists(yamlPath)) {
+                    using (var yamlStream = File.OpenRead(yamlPath))
+                    using (var yamlReader = new StreamReader(yamlStream))
+                    {
+                        var def = (new YamlDotNet.Serialization.Deserializer()).Deserialize<YamlDefinition>(yamlReader);
+                        meta = def.Font;
+                    }
                 }
-                catch (XmlDeserializerException e)
-                {
-                    e.WriteErrorsToConsole(file.MetaInfo.FullName);
-                    throw new ResourceImportException();
-                }
+                else
+                    meta = new YamlDefinition.FontDefinition();
+            } catch (Exception e)
+            {
+                throw new ImportException($"{yamlPath}: invalid format");
             }
-#endif
 
-            if (null == meta)
-                meta = new FontMeta();
 
+            using (var source = File.OpenRead(filename))
+                Import(source, target, meta); ;
+        }
+
+
+        private void Import(Stream source, Stream target, YamlDefinition.FontDefinition meta)
+        {
             // Alwasy add a space into the character list
             if (-1 == meta.Chars.IndexOf(' '))
                 meta.Chars = meta.Chars + " ";

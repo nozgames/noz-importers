@@ -22,18 +22,28 @@
   SOFTWARE.
 */
 
-using System;
-
 namespace NoZ.Import
 {
-    [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
-    class ImportExtensionAttribute : Attribute
+    public class ImportFile
     {
-        public string Extension;
+        /// <summary>
+        /// Filename of the primary import file 
+        /// </summary>
+        public string Filename;
 
-        public ImportExtensionAttribute (string ext)
-        {
-            Extension = ext;
-        }
+        /// <summary>
+        /// Filename of target file
+        /// </summary>
+        public string TargetFilename;
+
+        /// <summary>
+        /// Importer used to import this file
+        /// </summary>
+        public ResourceImporter Importer;
+
+        /// <summary>
+        /// True if the file has already been imported
+        /// </summary>
+        public bool Imported;
     }
 }
