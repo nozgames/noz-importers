@@ -40,13 +40,35 @@ namespace NoZ.Import
     [ImportExtension(".tga")]
     internal class ImageImporter : ResourceImporter
     {
-        public override void Import(string filename, Stream target)
+        public class YamlDefinition
         {
-            using (var source = File.OpenRead(filename))
-                Import(source, target);
+            public class ImageDefinition
+            {
+                public string Border { get; set; }
+            }
+
+            public ImageDefinition Image { get; set; }
         }
 
-        private void Import(Stream source, Stream target)
+        public override void Import(string filename, Stream target)
+        {
+            YamlDefinition.ImageDefinition meta = null;
+            var yamlPath = Path.ChangeExtension(filename, ".yaml");
+            if (File.Exists(yamlPath))
+            {
+                using (var yamlStream = File.OpenRead(yamlPath))
+                using (var yamlReader = new StreamReader(yamlStream))
+                {
+                    var yamlDef = (new YamlDotNet.Serialization.Deserializer()).Deserialize<YamlDefinition>(yamlReader);
+                    meta = yamlDef.Image;
+                }
+            }
+
+            using (var source = File.OpenRead(filename))
+                Import(source, target, meta);
+        }
+
+        private void Import(Stream source, Stream target, YamlDefinition.ImageDefinition meta)
         {
             try
             {
@@ -86,7 +108,12 @@ namespace NoZ.Import
                     writer.Write((short)image.Width);
                     writer.Write((short)image.Height);
                     writer.Write((byte)format);
-                    writer.Write(new Thickness(0));
+
+                    if (meta != null)
+                        writer.Write(Thickness.Parse(meta.Border));
+                    else
+                        writer.Write(new Thickness(0));
+
                     writer.Write(bytes, 0, bytes.Length);
                 }
             }
@@ -99,37 +126,5 @@ namespace NoZ.Import
                 throw new ImportException("failed to open file for read");
             }
         }
-
-#if false
-        private NoZ.Graphics.Image LoadImage (Stream stream)
-        {
-
-            switch (format)
-            {
-                case PixelFormat.R8G8B8A8:
-                {
-                    for (int i = 0; i < targetPixels.Length; i += 4)
-                    {
-                        byte temp = targetPixels[i + 0];
-                        targetPixels[i + 0] = targetPixels[i + 2];
-                        targetPixels[i + 2] = temp;
-                    }
-                    break;
-                }
-
-                case PixelFormat.R8G8B8:
-                {
-                    for (int i = 0; i < targetPixels.Length; i += 3)
-                    {
-                        byte temp = targetPixels[i + 0];
-                        targetPixels[i + 0] = targetPixels[i + 2];
-                        targetPixels[i + 2] = temp;
-                    }
-                    break;
-                }
-            }
-            return target;
-    }
-#endif
     }
 }
