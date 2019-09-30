@@ -78,7 +78,8 @@ namespace NoZ.Import
                 }
                 else
                     meta = new YamlDefinition.FontDefinition();
-            } catch (Exception e)
+            }
+            catch
             {
                 throw new ImportException($"{yamlPath}: invalid format");
             }
