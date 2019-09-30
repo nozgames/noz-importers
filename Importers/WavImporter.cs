@@ -133,13 +133,13 @@ namespace NoZ.Import
             clip.Save(writer);
         }
 
-        public override void Import(string filename, Stream target)
+        public override void Import(string source, string target)
         {
             try
             {
-                using (var file = File.OpenRead(filename))
+                using (var file = File.OpenRead(source))
                 using (var reader = new BinaryReader(file))
-                using (var writer = new BinaryWriter(target))
+                using (var writer = new ResourceWriter(File.OpenWrite(target), typeof(AudioClip)))
                 {
                     Import(reader, writer);
                 }

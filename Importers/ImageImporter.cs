@@ -31,50 +31,98 @@ using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 
 using NoZ;
+using System.Collections.Generic;
 
 namespace NoZ.Import
 {
-    [ImportType("NoZ.Graphics.Image, NoZ")]
+    [ImportType("NoZ.Image, NoZ")]
     [ImportExtension(".png")]
     [ImportExtension(".jpg")]
     [ImportExtension(".tga")]
     internal class ImageImporter : ResourceImporter
     {
-        public class YamlDefinition
+        public class MetaDefinition
         {
             public class ImageDefinition
             {
                 public string Border { get; set; }
             }
 
+            public struct AtlasRect
+            {
+                public int x { get; set; }
+                public int y { get; set; }
+                public int w { get; set; }
+                public int h { get; set; }
+            }
+
+            public class AtlasImage
+            {
+                public string Name { get; set; }
+                public AtlasRect Rect { get; set; }
+            }
+
+            public class ImageAtlasDefinition
+            {
+                public AtlasImage[] Images { get; set; }
+            }
+
             public ImageDefinition Image { get; set; }
+            public ImageAtlasDefinition ImageAtlas { get; set; }
         }
 
-        public override void Import(string filename, Stream target)
+        public override void Import(string source, string target)
         {
-            YamlDefinition.ImageDefinition meta = null;
-            var yamlPath = Path.ChangeExtension(filename, ".yaml");
+            MetaDefinition meta = null;
+            var yamlPath = Path.ChangeExtension(source, ".yaml");
             if (File.Exists(yamlPath))
             {
                 using (var yamlStream = File.OpenRead(yamlPath))
                 using (var yamlReader = new StreamReader(yamlStream))
                 {
-                    var yamlDef = (new YamlDotNet.Serialization.Deserializer()).Deserialize<YamlDefinition>(yamlReader);
-                    meta = yamlDef.Image;
+                    meta = (new YamlDotNet.Serialization.Deserializer()).Deserialize<MetaDefinition>(yamlReader);
                 }
             }
 
-            using (var source = File.OpenRead(filename))
-                Import(source, target, meta);
+            if(meta != null && meta.ImageAtlas != null)
+            {
+                var targetPath = Path.ChangeExtension(target,null);
+
+                // Create a directory with the same name as the resource
+                Directory.CreateDirectory(targetPath);
+
+                for (var i = 0; i < meta.ImageAtlas.Images.Length; i++)
+                {
+                    using (var sourceFile = File.OpenRead(source))
+                    using (var targetWriter = new ResourceWriter(File.OpenWrite($"{targetPath}/{meta.ImageAtlas.Images[i].Name}.resource"), typeof(Image)))
+                        Import(sourceFile, targetWriter, meta,
+                            new SixLabors.Primitives.Rectangle(
+                                meta.ImageAtlas.Images[i].Rect.x,
+                                meta.ImageAtlas.Images[i].Rect.y,
+                                meta.ImageAtlas.Images[i].Rect.w,
+                                meta.ImageAtlas.Images[i].Rect.h));
+
+                    // TODO: write the atlas out as a resource
+                }
+            }
+            else
+            {
+                using (var sourceFile = File.OpenRead(source))
+                using (var targetWriter = new ResourceWriter(File.OpenWrite(target), typeof(NoZ.Image)))
+                    Import(sourceFile, targetWriter, meta, SixLabors.Primitives.Rectangle.Empty);
+            }
         }
 
-        private void Import(Stream source, Stream target, YamlDefinition.ImageDefinition meta)
+        private void Import(Stream source, ResourceWriter writer, MetaDefinition meta, SixLabors.Primitives.Rectangle crop)
         {
             try
             {
-                var image = Image.Load(source);
+                var image = SixLabors.ImageSharp.Image.Load(source);
                 var format = PixelFormat.A8;
                 byte[] bytes;
+
+                if (crop != SixLabors.Primitives.Rectangle.Empty)
+                    image.Mutate(x => x.Crop(crop));
 
                 switch (image.PixelType.BitsPerPixel)
                 {
@@ -103,19 +151,16 @@ namespace NoZ.Import
                         throw new ImportException("unsupported image format");
                 }
 
-                using(var writer = new BinaryWriter(target))
-                {
-                    writer.Write((short)image.Width);
-                    writer.Write((short)image.Height);
-                    writer.Write((byte)format);
+                writer.Write((short)image.Width);
+                writer.Write((short)image.Height);
+                writer.Write((byte)format);
 
-                    if (meta != null)
-                        writer.Write(Thickness.Parse(meta.Border));
-                    else
-                        writer.Write(new Thickness(0));
+                if (meta?.Image != null)
+                    writer.Write(Thickness.Parse(meta.Image.Border));
+                else
+                    writer.Write(new Thickness(0));
 
-                    writer.Write(bytes, 0, bytes.Length);
-                }
+                writer.Write(bytes, 0, bytes.Length);
             }
             catch (ImportException)
             {

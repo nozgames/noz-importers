@@ -65,7 +65,7 @@ namespace NoZ.Import
                 // TODO: if extension is yaml then parse yaml and get first entry to determine type
 
                 var name = Path.GetFileNameWithoutExtension(relativeName);
-                var targetPath = Path.Combine(to, name);
+                var targetPath = Path.Combine(to, name) + ".resource";
                 _importersByExtension.TryGetValue(Path.GetExtension(relativeName), out var importer);
 
                 if (!_files.TryGetValue(name, out var file))
@@ -111,14 +111,7 @@ namespace NoZ.Import
                 // Make sure target directory exists
                 Directory.CreateDirectory(Path.GetDirectoryName(file.TargetFilename));
 
-                using (var writeStream = File.OpenWrite(file.TargetFilename))
-                {
-                    using (var writer = new BinaryWriter(writeStream, System.Text.Encoding.Default, true))
-                        writer.Write(file.Importer.ImportType.FullName);
-
-                    file.Importer.Import(file.Filename, writeStream);
-                    writeStream.Close();
-                }
+                file.Importer.Import(file.Filename, file.TargetFilename);
             }
             catch (Exception e)
             {

@@ -26,11 +26,9 @@ using System;
 using System.IO;
 using System.Collections.Generic;
 
-using NoZ.Graphics;
-
 namespace NoZ.Import
 {
-    [ImportType("NoZ.Graphics.Font, NoZ")]
+    [ImportType("NoZ.Font, NoZ")]
     [ImportExtension(".ttf")]
     class FontImporter : ResourceImporter
     {
@@ -63,11 +61,11 @@ namespace NoZ.Import
         private Vector2Int RoundToNearest(in Vector2 v) => new Vector2Int((int)(v.x + 0.5f), (int)(v.y + 0.5f));
         private Vector2Int RoundToNearest(in Vector2Double v) => new Vector2Int((int)(v.x + 0.5f), (int)(v.y + 0.5f));
 
-        public override void Import(string filename, Stream target)
+        public override void Import(string source, string target)
         {
             YamlDefinition.FontDefinition meta = null;
 
-            var yamlPath = Path.ChangeExtension(filename, ".yaml");
+            var yamlPath = Path.ChangeExtension(source, ".yaml");
             try
             {
                 if (File.Exists(yamlPath)) {
@@ -86,12 +84,13 @@ namespace NoZ.Import
             }
 
 
-            using (var source = File.OpenRead(filename))
-                Import(source, target, meta); ;
+            using (var targetFile = new ResourceWriter(File.OpenWrite(target), typeof(Font)))
+            using (var sourceFile = File.OpenRead(source))
+                Import(sourceFile, targetFile, meta); ;
         }
 
 
-        private void Import(Stream source, Stream target, YamlDefinition.FontDefinition meta)
+        private void Import(Stream source, ResourceWriter target, YamlDefinition.FontDefinition meta)
         {
             // Alwasy add a space into the character list
             if (-1 == meta.Chars.IndexOf(' '))
@@ -210,8 +209,7 @@ namespace NoZ.Import
             }
 
             var font = Font.Create(meta.Resolution, (float)ttf.Height, (float)ttf.Ascent, image, glyphs, kerning);
-            using (var targetWriter = new BinaryWriter(target))
-                font.Save(targetWriter);
+            font.Save(target);
         }
     }
 }

@@ -39,9 +39,15 @@ namespace NoZ.Import.Importers
         /// </summary>
         public class YamlDefinition
         {
+            public class Frame
+            {
+                public float Duration { get; set; } = 0.1f;
+                public string Image { get; set; }
+            }
+
             public class SpriteAnimationDefinition
             {
-                public List<string> Frames { get; set; } = new List<string>();
+                public Frame[] Frames { get; set; }
                 public int FPS { get; set; }
                 public bool Looping { get; set; }
             }
@@ -52,28 +58,28 @@ namespace NoZ.Import.Importers
         /// <summary>
         /// Import the sprite animation
         /// </summary>
-        public override void Import(string filename, Stream target)
+        public override void Import(string source, string target)
         {
-            using (var source = File.OpenRead(filename))
-                Import(source, target);
+            using (var sourceFile = File.OpenRead(source))
+            using (var targetWriter = new ResourceWriter(File.OpenWrite(target), typeof(SpriteAnimation)))
+                Import(sourceFile, targetWriter);
         }
 
-        private void Import(Stream source, Stream target)
-        {
-            var d = new YamlDotNet.Serialization.Deserializer();
+        private void Import(Stream source, ResourceWriter writer)
+        {            
             using (var reader = new StreamReader(source))
             {
                 try
                 {
-                    var yaml = d.Deserialize<YamlDefinition>(reader);
+                    var yaml = (new YamlDotNet.Serialization.Deserializer()).Deserialize<YamlDefinition>(reader);
 
-                    using (var writer = new BinaryWriter(target))
+                    writer.Write(yaml.SpriteAnimation.FPS);
+                    writer.Write(yaml.SpriteAnimation.Looping);
+                    writer.Write(yaml.SpriteAnimation.Frames.Length);
+                    for (int i = 0; i < yaml.SpriteAnimation.Frames.Length; i++)
                     {
-                        writer.Write(yaml.SpriteAnimation.FPS);
-                        writer.Write(yaml.SpriteAnimation.Looping);
-                        writer.Write(yaml.SpriteAnimation.Frames.Count);
-                        for (int i = 0; i < yaml.SpriteAnimation.Frames.Count; i++)
-                            writer.Write(yaml.SpriteAnimation.Frames[i]);
+                        writer.Write(yaml.SpriteAnimation.Frames[i].Image);
+                        writer.Write(yaml.SpriteAnimation.Frames[i].Duration);
                     }
                 }
                 catch (Exception e)
