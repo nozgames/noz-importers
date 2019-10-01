@@ -57,10 +57,10 @@ namespace NoZ.Import
         /// <summary>
         /// Import the sprite animation
         /// </summary>
-        public override void Import(string source, string target)
+        public override void Import(ImportFile file)
         {
-            using (var sourceFile = File.OpenRead(source))
-            using (var targetWriter = new ResourceWriter(File.OpenWrite(target), typeof(ImageAnimation)))
+            using (var sourceFile = File.OpenRead(file.Filename))
+            using (var targetWriter = new ResourceWriter(File.OpenWrite(file.TargetFilename), typeof(ImageAnimation)))
                 Import(sourceFile, targetWriter);
         }
 
@@ -72,8 +72,6 @@ namespace NoZ.Import
                 {
                     var yaml = (new YamlDotNet.Serialization.Deserializer()).Deserialize<YamlDefinition>(reader);
 
-                    writer.Write(yaml.ImageAnimation.FPS);
-                    writer.Write(yaml.ImageAnimation.Looping);
                     writer.Write(yaml.ImageAnimation.Frames.Length);
                     for (int i = 0; i < yaml.ImageAnimation.Frames.Length; i++)
                     {

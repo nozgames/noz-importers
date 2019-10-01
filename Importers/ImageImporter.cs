@@ -71,10 +71,10 @@ namespace NoZ.Import
             public ImageAtlasDefinition ImageAtlas { get; set; }
         }
 
-        public override void Import(string source, string target)
+        public override void Import(ImportFile file)
         {
             MetaDefinition meta = null;
-            var yamlPath = Path.ChangeExtension(source, ".yaml");
+            var yamlPath = Path.ChangeExtension(file.Filename, ".yaml");
             if (File.Exists(yamlPath))
             {
                 using (var yamlStream = File.OpenRead(yamlPath))
@@ -86,14 +86,14 @@ namespace NoZ.Import
 
             if(meta != null && meta.ImageAtlas != null)
             {
-                var targetPath = Path.ChangeExtension(target,null);
+                var targetPath = Path.ChangeExtension(file.TargetFilename,null);
 
                 // Create a directory with the same name as the resource
                 Directory.CreateDirectory(targetPath);
 
                 for (var i = 0; i < meta.ImageAtlas.Images.Length; i++)
                 {
-                    using (var sourceFile = File.OpenRead(source))
+                    using (var sourceFile = File.OpenRead(file.Filename))
                     using (var targetWriter = new ResourceWriter(File.OpenWrite($"{targetPath}/{meta.ImageAtlas.Images[i].Name}.resource"), typeof(Image)))
                         Import(sourceFile, targetWriter, meta,
                             new SixLabors.Primitives.Rectangle(
@@ -107,8 +107,8 @@ namespace NoZ.Import
             }
             else
             {
-                using (var sourceFile = File.OpenRead(source))
-                using (var targetWriter = new ResourceWriter(File.OpenWrite(target), typeof(NoZ.Image)))
+                using (var sourceFile = File.OpenRead(file.Filename))
+                using (var targetWriter = new ResourceWriter(File.OpenWrite(file.TargetFilename), typeof(NoZ.Image)))
                     Import(sourceFile, targetWriter, meta, SixLabors.Primitives.Rectangle.Empty);
             }
         }

@@ -23,7 +23,6 @@
 */
 
 using System;
-using System.IO;
 using System.Reflection;
 
 namespace NoZ.Import
@@ -36,9 +35,7 @@ namespace NoZ.Import
         /// <summary>
         /// Import the file with the given name and output it to the given stream
         /// </summary>
-        /// <param name="source">Input filename</param>
-        /// <param name="target">Output filename</param>
-        public abstract void Import(string source, string target);
+        public abstract void Import(ImportFile file);
 
         /// <summary>
         /// Return the type that the importer is responsible for importing

@@ -24,7 +24,6 @@
 
 using System;
 using System.IO;
-using System.Reflection;
 using System.Runtime.InteropServices;
 
 namespace NoZ.Import
@@ -133,13 +132,12 @@ namespace NoZ.Import
             clip.Save(writer);
         }
 
-        public override void Import(string source, string target)
+        public override void Import(ImportFile file)
         {
             try
             {
-                using (var file = File.OpenRead(source))
-                using (var reader = new BinaryReader(file))
-                using (var writer = new ResourceWriter(File.OpenWrite(target), typeof(AudioClip)))
+                using (var reader = new BinaryReader(File.OpenRead(file.Filename)))
+                using (var writer = new ResourceWriter(File.OpenWrite(file.TargetFilename), typeof(AudioClip)))
                 {
                     Import(reader, writer);
                 }

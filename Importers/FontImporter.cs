@@ -61,11 +61,11 @@ namespace NoZ.Import
         private Vector2Int RoundToNearest(in Vector2 v) => new Vector2Int((int)(v.x + 0.5f), (int)(v.y + 0.5f));
         private Vector2Int RoundToNearest(in Vector2Double v) => new Vector2Int((int)(v.x + 0.5f), (int)(v.y + 0.5f));
 
-        public override void Import(string source, string target)
+        public override void Import(ImportFile file)
         {
             YamlDefinition.FontDefinition meta = null;
 
-            var yamlPath = Path.ChangeExtension(source, ".yaml");
+            var yamlPath = Path.ChangeExtension(file.Filename, ".yaml");
             try
             {
                 if (File.Exists(yamlPath)) {
@@ -85,8 +85,8 @@ namespace NoZ.Import
             }
 
 
-            using (var targetFile = new ResourceWriter(File.OpenWrite(target), typeof(Font)))
-            using (var sourceFile = File.OpenRead(source))
+            using (var targetFile = new ResourceWriter(File.OpenWrite(file.TargetFilename), typeof(Font)))
+            using (var sourceFile = File.OpenRead(file.Filename))
                 Import(sourceFile, targetFile, meta); ;
         }
 

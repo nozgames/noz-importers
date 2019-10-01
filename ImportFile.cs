@@ -27,6 +27,11 @@ namespace NoZ.Import
     public class ImportFile
     {
         /// <summary>
+        /// Resource name
+        /// </summary>
+        public string Name;
+
+        /// <summary>
         /// Filename of the primary import file 
         /// </summary>
         public string Filename;
@@ -35,6 +40,11 @@ namespace NoZ.Import
         /// Filename of target file
         /// </summary>
         public string TargetFilename;
+
+        /// <summary>
+        /// Directory name of target
+        /// </summary>
+        public string TargetDirectory;
 
         /// <summary>
         /// Importer used to import this file

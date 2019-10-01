@@ -65,7 +65,8 @@ namespace NoZ.Import
                 // TODO: if extension is yaml then parse yaml and get first entry to determine type
 
                 var name = Path.GetFileNameWithoutExtension(relativeName);
-                var targetPath = Path.Combine(to, name) + ".resource";
+                var targetName = Path.Combine(to, name);
+                var targetPath = targetName + ".resource";
                 _importersByExtension.TryGetValue(Path.GetExtension(relativeName), out var importer);
 
                 if (!_files.TryGetValue(name, out var file))
@@ -73,6 +74,8 @@ namespace NoZ.Import
                     file = new ImportFile { Filename = sourcePath, Imported = true, Importer = importer };
                     file.Filename = sourcePath;
                     file.TargetFilename = targetPath;
+                    file.Name = name;
+                    file.TargetDirectory = to;
                     _files[name] = file;
                 }
                 else if (importer != null)
@@ -84,11 +87,16 @@ namespace NoZ.Import
                     file.Filename = sourcePath;
                 }
 
-                file.Imported &= (File.GetLastWriteTime(targetPath) >= (DateTimeOffset)File.GetLastWriteTime(sourcePath));
+                if (File.Exists(targetPath))
+                    file.Imported &= (File.GetLastWriteTime(targetPath) >= (DateTimeOffset)File.GetLastWriteTime(sourcePath));
+                else if (Directory.Exists(targetName))
+                    file.Imported &= (Directory.GetLastWriteTime(targetName) >= (DateTimeOffset)File.GetLastWriteTime(sourcePath));
+                else
+                    file.Imported = false;
             }
 
             // Import all files
-            foreach(var file in _files.Values)
+            foreach (var file in _files.Values)
                 Import(file);
         }
 
@@ -111,7 +119,7 @@ namespace NoZ.Import
                 // Make sure target directory exists
                 Directory.CreateDirectory(Path.GetDirectoryName(file.TargetFilename));
 
-                file.Importer.Import(file.Filename, file.TargetFilename);
+                file.Importer.Import(file);
             }
             catch (Exception e)
             {
@@ -170,12 +178,15 @@ namespace NoZ.Import
                         continue;
 
                     var importer = (ResourceImporter)Activator.CreateInstance(type);
-                    var importTypeName = type.GetCustomAttribute<ImportTypeAttribute>().TypeName;
-                    var importType = Type.GetType(importTypeName);
-                    if (null == importType)
-                        throw new ImportException($"unkonwn type '{importTypeName}'");
 
-                    _importersByType[importType.Name] = importer;
+                    var importTypeAttr = type.GetCustomAttribute<ImportTypeAttribute>();
+                    if (importTypeAttr != null)
+                    {
+                        var importTypeName = type.GetCustomAttribute<ImportTypeAttribute>().TypeName;
+                        var importType = Type.GetType(importTypeName);
+                        _importersByType[importType.Name] = importer;
+                    }
+
                     foreach(var ext in type.GetCustomAttributes<ImportExtensionAttribute>())
                         _importersByExtension[ext.Extension] = importer;
                 }
