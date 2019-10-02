@@ -67,7 +67,8 @@ namespace NoZ.Import
                 var name = Path.GetFileNameWithoutExtension(relativeName);
                 var targetName = Path.Combine(to, name);
                 var targetPath = targetName + ".resource";
-                _importersByExtension.TryGetValue(Path.GetExtension(relativeName), out var importer);
+                var targetExt = Path.GetExtension(relativeName);
+                _importersByExtension.TryGetValue(targetExt, out var importer);
 
                 if (!_files.TryGetValue(name, out var file))
                 {
@@ -78,14 +79,17 @@ namespace NoZ.Import
                     file.TargetDirectory = to;
                     _files[name] = file;
                 }
-                else if (importer != null)
+                else if (file.Importer != null && IsSecondaryExtension(file.Importer, targetExt))
                 {
-                    if (file.Importer != null)
-                        throw new ImportException($"multiple importers defined for resource {name}");
-                    
+                    // Ignore the new importer since the currenct one is already handling it as a secondary
+                }
+                else if (importer != null && IsSecondaryExtension(importer, Path.GetExtension(file.Filename)))
+                {
                     file.Importer = importer;
                     file.Filename = sourcePath;
                 }
+                else if (importer != null)
+                    throw new ImportException($"multiple importers defined for resource {name}");
 
                 if (File.Exists(targetPath))
                     file.Imported &= (File.GetLastWriteTime(targetPath) >= (DateTimeOffset)File.GetLastWriteTime(sourcePath));
@@ -152,6 +156,18 @@ namespace NoZ.Import
         }
 
         /// <summary>
+        /// Returns true if the given extension is a valid secondary extension for the given importer
+        /// </summary>
+        private bool IsSecondaryExtension (ResourceImporter importer, string ext)
+        {
+            foreach(var attr in importer.GetType().GetCustomAttributes<ImportExtensionAttribute>())
+                if (attr.IsSecondary && attr.Extension == ext)
+                    return true;
+
+            return false;
+        }
+
+        /// <summary>
         /// Initializes the static components of the ImportArchive
         /// </summary>
         private bool _initialized = false;
@@ -188,7 +204,8 @@ namespace NoZ.Import
                     }
 
                     foreach(var ext in type.GetCustomAttributes<ImportExtensionAttribute>())
-                        _importersByExtension[ext.Extension] = importer;
+                        if(!ext.IsSecondary)
+                            _importersByExtension[ext.Extension] = importer;
                 }
             }
         }

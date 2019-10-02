@@ -30,6 +30,7 @@ namespace NoZ.Import
     class ImportExtensionAttribute : Attribute
     {
         public string Extension;
+        public bool IsSecondary { get; set; }
 
         public ImportExtensionAttribute (string ext)
         {

@@ -84,7 +84,11 @@ namespace NoZ.Import
                 }
             }
 
-            if(meta != null && meta.ImageAtlas != null)
+            var border = Thickness.Empty;
+            if (meta != null && meta.Image != null)
+                border = Thickness.Parse(meta.Image.Border);
+
+            if (meta != null && meta.ImageAtlas != null)
             {
                 var targetPath = Path.ChangeExtension(file.TargetFilename,null);
 
@@ -95,7 +99,7 @@ namespace NoZ.Import
                 {
                     using (var sourceFile = File.OpenRead(file.Filename))
                     using (var targetWriter = new ResourceWriter(File.OpenWrite($"{targetPath}/{meta.ImageAtlas.Images[i].Name}.resource"), typeof(Image)))
-                        Import(sourceFile, targetWriter, meta,
+                        Import(sourceFile, targetWriter, border,
                             new SixLabors.Primitives.Rectangle(
                                 meta.ImageAtlas.Images[i].Rect.x,
                                 meta.ImageAtlas.Images[i].Rect.y,
@@ -109,11 +113,18 @@ namespace NoZ.Import
             {
                 using (var sourceFile = File.OpenRead(file.Filename))
                 using (var targetWriter = new ResourceWriter(File.OpenWrite(file.TargetFilename), typeof(NoZ.Image)))
-                    Import(sourceFile, targetWriter, meta, SixLabors.Primitives.Rectangle.Empty);
+                    Import(sourceFile, targetWriter, border, SixLabors.Primitives.Rectangle.Empty);
             }
         }
 
-        private void Import(Stream source, ResourceWriter writer, MetaDefinition meta, SixLabors.Primitives.Rectangle crop)
+        public static void Import(string source, string target, in Thickness border, SixLabors.Primitives.Rectangle crop)
+        {
+            using (var sourceFile = File.OpenRead(source))
+            using (var targetWriter = new ResourceWriter(File.OpenWrite(target), typeof(NoZ.Image)))
+                Import(sourceFile, targetWriter, border, SixLabors.Primitives.Rectangle.Empty);
+        }
+
+        public static void Import(Stream source, ResourceWriter writer, in Thickness border, SixLabors.Primitives.Rectangle crop)
         {
             try
             {
@@ -154,12 +165,7 @@ namespace NoZ.Import
                 writer.Write((short)image.Width);
                 writer.Write((short)image.Height);
                 writer.Write((byte)format);
-
-                if (meta?.Image != null)
-                    writer.Write(Thickness.Parse(meta.Image.Border));
-                else
-                    writer.Write(new Thickness(0));
-
+                writer.Write(border);
                 writer.Write(bytes, 0, bytes.Length);
             }
             catch (ImportException)
