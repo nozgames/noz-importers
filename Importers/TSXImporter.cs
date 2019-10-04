@@ -95,6 +95,10 @@ namespace NoZ.Import
             writer.Write((ushort)tilecount);
             writer.Write((ushort)tiles.Count);
 
+            // Write the image
+            using (var source = File.OpenRead(image))
+                ImageImporter.Import(source, writer, Thickness.Empty, SixLabors.Primitives.Rectangle.Empty);
+
             // Embed the tile images into the tile set
             foreach (XmlNode tile in tiles)
             {
@@ -106,9 +110,8 @@ namespace NoZ.Import
                 y = (y * tileheight) + y * spacing;
 
                 writer.Write((ushort)id);
-
-                using (var source = File.OpenRead(image))
-                    ImageImporter.Import(source, writer, Thickness.Empty, new SixLabors.Primitives.Rectangle(x, y, tilewidth, tileheight));
+                writer.Write((ushort)x);
+                writer.Write((ushort)y);
 
                 WriteProperties(writer, tile["properties"]);
 
