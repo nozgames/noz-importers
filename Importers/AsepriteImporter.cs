@@ -91,6 +91,25 @@ namespace NoZ.Import.Importers
                 Import(reader, file);
         }
 
+        private void MergeFrame (byte[] source, byte[] target)
+        {
+            for(int i=0; i<source.Length; i+=4)
+            {
+                var a = source[i + 3];
+                if (a == 0)
+                    continue;
+
+                var result =Color.Lerp(
+                    Color.FromRgb(target[i + 0], target[i + 1], target[i + 2]),
+                    Color.FromRgb(source[i + 0], source[i + 1], source[i + 2]),
+                    a / 255.0f);
+                target[i + 0] = result.R;
+                target[i + 1] = result.G;
+                target[i + 2] = result.B;
+                target[i + 3] = 255;
+            }
+        }
+
         private void Import (BinaryReader reader, ImportFile file)
         {
             var targetDir = Path.ChangeExtension(file.TargetFilename, null);
@@ -107,7 +126,7 @@ namespace NoZ.Import.Importers
             {
                 reader.ReadStruct<FrameHeader>(out var frame);
 
-                var celData = new byte[header.width * header.height * 4];
+                byte[] celData = null;
 
                 for (int j=0; j<frame.chunks; j++)
                 {                    
@@ -139,8 +158,8 @@ namespace NoZ.Import.Importers
                             if (opacity != 255)
                                 throw new ImportException("opacity not implemented");
 
-                            if (layerIndex != 0)
-                                throw new ImportException("layers not implemented");
+//                            if (layerIndex != 0)
+  //                              throw new ImportException("layers not implemented");
 
                             switch (celType)
                             {
@@ -157,8 +176,14 @@ namespace NoZ.Import.Importers
                                     {
                                         try
                                         {
-                                            for(int yy=0;yy<h;yy++)
-                                                deflate.Read(celData, x * 4 + (yy + y) * header.width * 4, w * 4);                                           
+                                            var data = new byte[header.width * header.height * 4];
+                                            for (int yy=0;yy<h;yy++)
+                                                deflate.Read(data, x * 4 + (yy + y) * header.width * 4, w * 4);
+
+                                            if (celData == null)
+                                                celData = data;
+                                            else
+                                                MergeFrame(data, celData);
                                         }
                                         catch
                                         {
