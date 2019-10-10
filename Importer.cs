@@ -64,7 +64,7 @@ namespace NoZ.Import
                 // TODO: look up extension and associate impoprter
                 // TODO: if extension is yaml then parse yaml and get first entry to determine type
 
-                var name = Path.GetFileNameWithoutExtension(relativeName);
+                var name = Path.ChangeExtension(relativeName,null);
                 var targetName = Path.Combine(to, name);
                 var targetPath = targetName + ".resource";
                 var targetExt = Path.GetExtension(relativeName);
