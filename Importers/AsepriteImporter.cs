@@ -83,7 +83,15 @@ namespace NoZ.Import.Importers
             public string name;
             public float duration;
             public byte[] data;
+            public string[] events;
         }
+
+        struct Layer
+        {
+            public string Name;
+            public bool IsEvent;
+        }
+
 
         public override void Import(ImportFile file)
         {
@@ -121,18 +129,23 @@ namespace NoZ.Import.Importers
             
             var tags = new List<Tag>();
             var frames = new List<Frame>();
+            var events = new List<string>();
+            var isEvent = false;
+            var layers = new List<Layer>();
 
             for (int i=0; i<header.frames; i++)
             {
                 reader.ReadStruct<FrameHeader>(out var frame);
 
                 byte[] celData = null;
+                events.Clear();
 
                 for (int j=0; j<frame.chunks; j++)
                 {                    
                     var size = reader.ReadUInt32();
                     var type = reader.ReadUInt16();
                     var next = reader.BaseStream.Position + size - 6;
+                    string layerName = null;
 
                     switch(type)
                     {
@@ -143,7 +156,27 @@ namespace NoZ.Import.Importers
 
                         // Layer chunk
                         case 0x2004:
+                        {
+                            var flags = reader.ReadUInt16();
+                            var layerType = reader.ReadUInt16();
+                            var layerChildLevel = reader.ReadUInt16();
+                            reader.BaseStream.Position += 4;
+                            var blendMode = reader.ReadUInt16();
+                            if (blendMode != 0)
+                                throw new ImportException("Blend modes other than normal are not supported at this time");
+                            var opacity = reader.ReadByte();
+                            reader.BaseStream.Position += 3;
+                            layerName = System.Text.Encoding.UTF8.GetString(reader.ReadBytes(reader.ReadUInt16()));
+
+                            if (layerChildLevel == 0 && layerName.ToLower() == "events")
+                                isEvent = true;
+                            else if (isEvent && layerChildLevel == 0)
+                                isEvent = false;
+
+                            layers.Add(new Layer { Name = layerName, IsEvent = isEvent });
+
                             break;
+                        }
 
                         // Cel chunk
                         case 0x2005:
@@ -154,6 +187,12 @@ namespace NoZ.Import.Importers
                             var opacity = reader.ReadByte();
                             var celType = reader.ReadUInt16();
                             reader.BaseStream.Position += 7;
+
+                            if(layers[layerIndex].IsEvent)
+                            {
+                                events.Add(layers[layerIndex].Name.ToLower());
+                                break;
+                            }
 
                             if (opacity != 255)
                                 throw new ImportException("opacity not implemented");
@@ -244,7 +283,12 @@ namespace NoZ.Import.Importers
                 }
 
                 // Add the frame
-                frames.Add(new Frame { duration = frame.duration / 1000.0f, name = $"{file.Name}/{i}", data = celData });
+                frames.Add(new Frame { 
+                    duration = frame.duration / 1000.0f,
+                    name = $"{file.Name}/{i}",
+                    data = celData,
+                    events = events.Count > 0 ? events.ToArray() : null
+                });
             }
 
             if (frames.Count == 1 && tags.Count == 0)
@@ -290,6 +334,15 @@ namespace NoZ.Import.Importers
                             {
                                 writer.Write(frames[i].name);
                                 writer.Write(frames[i].duration);
+
+                                if(frames[i].events != null)
+                                {
+                                    writer.Write((byte)frames[i].events.Length);
+                                    for(int e=0; e<frames[i].events.Length; e++)
+                                        writer.Write(frames[i].events[e]);
+                                }
+                                else
+                                    writer.Write((byte)0);
                             }
                         }
                         else
@@ -298,6 +351,15 @@ namespace NoZ.Import.Importers
                             {
                                 writer.Write(frames[i].name);
                                 writer.Write(frames[i].duration);
+
+                                if (frames[i].events != null)
+                                {
+                                    writer.Write((byte)frames[i].events.Length);
+                                    for (int e = 0; e < frames[i].events.Length; e++)
+                                        writer.Write(frames[i].events[e]);
+                                }
+                                else
+                                    writer.Write((byte)0);
                             }
                         }
                     }                    

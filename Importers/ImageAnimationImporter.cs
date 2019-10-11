@@ -42,13 +42,12 @@ namespace NoZ.Import
             {
                 public float Duration { get; set; } = 0.1f;
                 public string Image { get; set; }
+                public string[] Events { get; set; }
             }
 
             public class ImageAnimationYaml
             {
                 public FrameYaml[] Frames { get; set; }
-                public int FPS { get; set; }
-                public bool Looping { get; set; }
             }
 
             public ImageAnimationYaml ImageAnimation { get; set; }
@@ -75,8 +74,14 @@ namespace NoZ.Import
                     writer.Write(yaml.ImageAnimation.Frames.Length);
                     for (int i = 0; i < yaml.ImageAnimation.Frames.Length; i++)
                     {
-                        writer.Write(yaml.ImageAnimation.Frames[i].Image);
-                        writer.Write(yaml.ImageAnimation.Frames[i].Duration);
+                        ref var frame = ref yaml.ImageAnimation.Frames[i];
+                        writer.Write(frame.Image);
+                        writer.Write(frame.Duration);
+
+                        writer.Write((byte)(frame.Events?.Length ?? 0));
+                        if (frame.Events != null)
+                            for (int e = 0; e < frame.Events.Length; e++)
+                                writer.Write(frame.Events[e]);
                     }
                 }
                 catch
