@@ -117,7 +117,7 @@ namespace NoZ.Import
                 if(file.Importer == null)
                     throw new ImportException($"{file.Filename}: no importers available");
             }
-
+                
             try
             {
                 // Make sure target directory exists

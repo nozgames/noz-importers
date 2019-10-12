@@ -46,29 +46,21 @@ namespace NoZ.Import
         private void Import(ImportFile file, XmlDocument doc, ResourceWriter writer)
         {
             var map = doc.GetElementsByTagName("map")[0];
-            var tilesets = doc.GetElementsByTagName("tileset");
-            var layers = doc.GetElementsByTagName("layer");
-
-            if (layers.Count == 0)
-                throw new ImportException("Missing layers");
-
-            if (layers.Count > 1)
-                throw new ImportException("Multiple layers not yet supported");
-
             var width = int.Parse(map.Attributes["width"].Value);
             var height = int.Parse(map.Attributes["height"].Value);
-            var tileWidth = int.Parse(map.Attributes["tilewidth"].Value);
-            var tileHeight = int.Parse(map.Attributes["tileheight"].Value);
-
-            var tileSetFirstId = new int[tilesets.Count];
 
             writer.Write((ushort)width);
             writer.Write((ushort)height);
-            writer.Write((ushort)tileWidth);
-            writer.Write((ushort)tileHeight);
+            writer.Write((ushort)int.Parse(map.Attributes["tilewidth"].Value));
+            writer.Write((ushort)int.Parse(map.Attributes["tileheight"].Value));
 
+            var layers = map.SelectNodes("objectgroup | layer");
+            var tilesets = map.SelectNodes("tileset");
+
+            // Write tile sets
+            var tileSetFirstId = new int[tilesets.Count];
             writer.Write((ushort)tileSetFirstId.Length);
-            for(int i=0; i< tileSetFirstId.Length; i++)
+            for (int i = 0; i < tileSetFirstId.Length; i++)
             {
                 XmlNode tileSet = tilesets[i];
                 var source = tileSet.Attributes["source"].Value;
@@ -82,28 +74,139 @@ namespace NoZ.Import
                 writer.Write(name);
             }
 
-            var layer = layers[0];
-            var data = layer["data"];
-            var encoding = data.Attributes["encoding"].Value;
-            if (encoding != "csv")
-                throw new ImportException($"encoding '{encoding}' not supported");
+            // Write layers
+            writer.Write((ushort)layers.Count);
 
-            var ids = data.InnerText.Split(',');
-            writer.Write((ushort)ids.Length);
-            for (int i = 0; i < ids.Length; i++)
+            foreach (XmlNode layer in layers)
             {
-                var id = int.Parse(ids[i]);
-                if (id == 0)
+                writer.Write(layer.Attributes["name"]?.Value ?? "");
+                writer.Write((ushort)width);
+                writer.Write((ushort)height);
+
+                // Properties
+                var objprops = layer.SelectNodes("properties/property");
+                writer.Write((ushort)objprops.Count);
+
+                foreach (XmlNode objprop in objprops)
                 {
-                    writer.Write((ushort)0xFFFF);
-                    continue;
+                    writer.Write(objprop.Attributes["name"].Value);
+                    writer.Write(objprop.Attributes["value"].Value);
                 }
 
-                int tileSetId;
-                for (tileSetId = 0; tileSetId < tileSetFirstId.Length-1 && id >= tileSetFirstId[tileSetId+1]; tileSetId++) ;
+                switch (layer.Name)
+                {
+                    case "layer":
+                    {
+                        // Write tiles
+                        var data = layer["data"];
+                        var encoding = data.Attributes["encoding"].Value;
+                        if (encoding != "csv")
+                            throw new ImportException($"encoding '{encoding}' not supported");
 
-                writer.Write((ushort)tileSetId);
-                writer.Write((ushort)(id - tileSetFirstId[tileSetId]));
+                        var ids = data.InnerText.Split(',');
+                        writer.Write((ushort)ids.Length);
+                        for (int i = 0; i < ids.Length; i++)
+                        {
+                            var id = int.Parse(ids[i]);
+                            if (id == 0)
+                            {
+                                writer.Write((ushort)0xFFFF);
+                                continue;
+                            }
+
+                            int tileSetId;
+                            for (tileSetId = 0; tileSetId < tileSetFirstId.Length - 1 && id >= tileSetFirstId[tileSetId + 1]; tileSetId++) ;
+
+                            writer.Write((ushort)tileSetId);
+                            writer.Write((ushort)(id - tileSetFirstId[tileSetId]));
+                        }
+
+                        // Write objects
+                        writer.Write((ushort)0);
+
+                        break;
+                    }
+
+                    case "objectgroup":
+                    {
+                        // No tiles
+                        writer.Write((ushort)0);
+
+                        var properties = layer.SelectNodes("properties/property");
+
+                        // Write objects
+                        var objects = layer.SelectNodes("object");
+                        writer.Write((ushort)objects.Count);
+
+                        foreach(XmlNode o in objects)
+                        {
+                            XmlNode obj = o;
+                            var template = obj.Attributes["template"]?.Value;
+                            if (template != null)
+                            {
+                                var templateDoc = new XmlDocument();
+                                templateDoc.Load(Path.Combine(Path.GetDirectoryName(file.Filename), template));
+                                obj = templateDoc.SelectSingleNode("/template/object");
+                            }
+
+                            writer.Write(o.Attributes["name"]?.Value ?? obj.Attributes["name"]?.Value ?? "");
+                            writer.Write(o.Attributes["type"]?.Value ?? obj.Attributes["type"]?.Value ?? "");
+                            writer.Write(new Vector2(float.Parse(o.Attributes["x"].Value), float.Parse(o.Attributes["y"].Value)));
+
+                            // Point
+                            if (obj.SelectSingleNode("point") != null)
+                            {
+                                writer.Write((byte)TileMap.ShapeType.Point);
+                            } 
+                            // Polygon
+                            else if (obj.SelectSingleNode("polygon") != null)
+                            {
+                                writer.Write((byte)TileMap.ShapeType.Polygon);
+
+                                var points = obj.SelectSingleNode("polygon").Attributes["points"].Value.Split(new char[] { ' ' });
+                                writer.Write((ushort)points.Length);
+                                for (int i = 0; i < points.Length; i++)
+                                    writer.Write(Vector2.Parse(points[i]));
+                            } 
+                            // Polyline
+                            else if (obj.SelectSingleNode("polyline") != null)
+                            {
+                                writer.Write((byte)TileMap.ShapeType.PolyLine);
+                                
+                                var points = obj.SelectSingleNode("polyline").Attributes["points"].Value.Split(new char[] { ' ' });
+                                writer.Write((ushort)points.Length);
+                                for (int i = 0; i < points.Length; i++)
+                                    writer.Write(Vector2.Parse(points[i]));
+                            }
+                            // Ellipse
+                            else if (obj.SelectSingleNode("ellipse") != null)
+                            {
+                                writer.Write((byte)TileMap.ShapeType.Circle);
+                                writer.Write(float.Parse(o.Attributes["width"]?.Value ?? obj.Attributes["width"]?.Value ?? "0"));
+                                writer.Write(float.Parse(o.Attributes["height"]?.Value ?? obj.Attributes["height"]?.Value ?? "0"));
+                            }
+                            // Box
+                            else
+                            {
+                                writer.Write((byte)TileMap.ShapeType.Box);
+                                writer.Write(float.Parse(o.Attributes["width"]?.Value ?? obj.Attributes["width"]?.Value ?? "0"));
+                                writer.Write(float.Parse(o.Attributes["height"]?.Value ?? obj.Attributes["height"]?.Value ?? "0"));
+                            }
+
+                            // Properties
+                            var layerprops = obj.SelectNodes("properties/property");
+                            writer.Write((ushort)layerprops.Count);
+
+                            foreach(XmlNode layerProp in layerprops)
+                            {
+                                writer.Write(layerProp.Attributes["name"].Value);
+                                writer.Write(layerProp.Attributes["value"].Value);
+                            }
+                        }
+
+                        break;
+                    }
+                }
             }
         }
     }
